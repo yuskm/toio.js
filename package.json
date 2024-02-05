@@ -20,6 +20,7 @@
     "example:id-reader": "node examples/id-reader",
     "example:keyboard-control": "node examples/keyboard-control",
     "example:chase": "node examples/chase",
+    "example:turn-table": "node examples/turn-table",
     "lint": "eslint **/src/**/*.ts",
     "release": "lerna publish from-package",
     "test": "lerna run test",
