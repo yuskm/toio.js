@@ -12,3 +12,5 @@ lerna-debug.log
 # others
 packages/*/lib
 docs/
+
+.env

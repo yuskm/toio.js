@@ -1,5 +1,50 @@
 // index.js
+require('dotenv').config({ path: __dirname+'/./.env' })
+
 const { NearScanner } = require('@toio/scanner')
+const mqtt = require("mqtt");
+
+class MqttCtrl {
+  constructor(url = process.env.MQTT_URL) {
+    this.callback = [];
+    this.client = mqtt.connect(url);
+    this.url = url;
+    this.topics = [];
+
+    this.client.on("connect", () => {
+      console.log("mqtt connected.")
+    });
+
+    this.client.on("message", async (topic, message) => {
+      // - message is Buffer
+      const messageA = message.toString()
+      console.log("messageA", messageA)
+      for (const callback of this.callback) {
+        callback(topic, messageA);
+      }
+    });
+  }
+
+  addMsgCallback(callback) {
+    this.callback.push(callback)
+  }
+
+  subscribe(topic) {
+    this.topics.push(topic);
+    this.client.subscribe(topic, (err) => {
+      if (!err) {
+        this.client.publish(topic, "start to subscribe.");
+      } else {
+        console.log("fail to subscribe.", e); 
+      }
+    });
+  }
+
+  publish(topic, msg) {
+    topic = topic ? topic : this.topic;
+    this.client.publish(topic, msg);
+  }
+}
 
 const toioBaseWheelSpeed = { l: 50, r: 40 };
 const toioACenter = { x: 330, y: 250 };
@@ -9,12 +54,13 @@ const toidBColor = { red: 255, green: 0, blue: 0 };
 const toioRadius = 10;
 
 class ToioCtrl {
-  constructor(cube, 
+  constructor(cube, name,
     center = { x: 330, y: 250 },
     baseWheelSpeed = { l: 50, r: 40 },
     color = { red: 0, green: 0, blue: 255 },
     radius = 10) {
     this.cube = cube;
+    this.name = name;
     this.color = color;
     this.isRun = false;
     this.circulateTimerId = null;
@@ -25,7 +71,7 @@ class ToioCtrl {
     this.isReverse = false;
     this.currRadius = 0;
     this.prevRadiuses = [0, 0];
-
+    this.mqttCtrl = null;
 
     this.cube.on('id:position-id', (data) => {
       this.#onPositionId(data.x, data.y);
@@ -64,7 +110,15 @@ class ToioCtrl {
       this.circulateTimerId = null;
     }
     this.cube.stop();
-    // publishStop(1);
+
+    if (this.mqttCtrl) {
+      this.mqttCtrl.publish(process.env.MQTT_TOPIC, JSON.stringify({
+        cmd: "stop",
+        prm: {
+          name: this.name
+        }
+      }))
+    }
   }
 
   setLightColor(color) {
@@ -77,6 +131,11 @@ class ToioCtrl {
 
   lightOff() {
     this.cube.turnOffLight()
+  }
+
+  setMqttCtrl(mqttCtrl) {
+    this.mqttCtrl = mqttCtrl;
+    this.mqttCtrl.addMsgCallback(this.#msgHandler)
   }
 
   #onPositionId(x, y) {
@@ -119,9 +178,16 @@ class ToioCtrl {
     return Math.sqrt(Math.pow(Math.abs(x0 - x1), 2) + Math.pow(Math.abs(y0 - y1), 2));
   }
 
+  async #msgHandler(topic, message) {
+    console.log(topic, message)
+  }
+
 }
 
 async function main() {
+  const mqtt = new MqttCtrl(process.env.MQTT_URL);
+  mqtt.subscribe(process.env.MQTT_TOPIC);
+
   // start a scanner to find nearest two cubes
   const cubes = await new NearScanner(2).start()
 
@@ -130,12 +196,15 @@ async function main() {
   const cubeB = await cubes[1].connect()
 
   const ToioCtrlA = new ToioCtrl(
-    cubeA, toioACenter, toioBaseWheelSpeed, toidAColor, toioRadius);
-  ToioCtrlA.lightOn()
+    cubeA, "A", toioACenter, toioBaseWheelSpeed, toidAColor, toioRadius);
+  ToioCtrlA.lightOn();
 
   const ToioCtrlB = new ToioCtrl(
-    cubeB, toioBCenter, toioBaseWheelSpeed, toidBColor, toioRadius);
-  ToioCtrlB.lightOn()
+    cubeB, "B", toioBCenter, toioBaseWheelSpeed, toidBColor, toioRadius);
+  ToioCtrlB.lightOn();
+  
+  ToioCtrlA.setMqttCtrl(mqtt);
+  ToioCtrlB.setMqttCtrl(mqtt);
 }
 
 main()
