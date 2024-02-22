@@ -28,7 +28,8 @@
   },
   "dependencies": {
     "@toio/cube": "^1.1.0",
-    "noble-mac": "Timeular/noble-mac"
+    "noble-mac": "Timeular/noble-mac",
+    "typescript": "^5.3.3"
   },
   "publishConfig": {
     "access": "public"
