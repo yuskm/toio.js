@@ -32,7 +32,13 @@
 
     /* Module Resolution Options */
     // Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    
+    // ymiyama [2024/02/22
+    // - MQTT.js に依存する package が type error を出したため、暫定対策。 
+    "skipLibCheck": true,
+    // ymiyama]
+
   },
   "exclude": ["node_modules"]
 }
