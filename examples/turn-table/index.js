@@ -1,4 +1,5 @@
 // index.js
+
 require('dotenv').config({ path: __dirname+'/./.env' })
 
 const { NearScanner } = require('@toio/scanner')
@@ -100,7 +101,8 @@ class ToioCtrl {
       this.prevRadiuses[1] = this.prevRadiuses[0];
       this.prevRadiuses[0] = this.currRadius;
     }, 100);
-    // publishStart(1)
+
+    this.#publishCubeStartMsg();
   }
 
   stop() {
@@ -111,14 +113,7 @@ class ToioCtrl {
     }
     this.cube.stop();
 
-    if (this.mqttCtrl) {
-      this.mqttCtrl.publish(process.env.MQTT_TOPIC, JSON.stringify({
-        cmd: "stop",
-        prm: {
-          name: this.name
-        }
-      }))
-    }
+    this.#publishCubeStopMsg();
   }
 
   setLightColor(color) {
@@ -135,7 +130,7 @@ class ToioCtrl {
 
   setMqttCtrl(mqttCtrl) {
     this.mqttCtrl = mqttCtrl;
-    this.mqttCtrl.addMsgCallback(this.#msgHandler)
+    this.mqttCtrl.addMsgCallback(this.#msgHandler.bind(this))
   }
 
   #onPositionId(x, y) {
@@ -153,14 +148,20 @@ class ToioCtrl {
 
   async #checkShake() {
     // - なぜか、getDoubleTapStatus で shake 状態が検出される。toio.js のバグか？
-    const state = await this.cube.getDoubleTapStatus();
-    if (state.isDoubleTapped) {
-      console.log("state.isDoubleTapped");
-      // client.publish(topic, JSON.stringify({cmd: "efx"}));
-    }
+    // const state = await this.cube.getDoubleTapStatus();
+    // if (state.isDoubleTapped) {
+      // console.log("state.isDoubleTapped");
+     //  this.#publishEfxMsg();
+    //}
+    const state = await this.cube.getShakeStatus();
+      if (state.shakeLevel > 0) {
+        console.log("shake");
+        this.#publishEfxMsg();
+      }
   }
 
   async #circulate() {
+    // https://toio.io/do/make/td1m0164/ を参照した。
     const ki = 0.1
     const kd = 1.0
     const kp = 0
@@ -179,9 +180,61 @@ class ToioCtrl {
   }
 
   async #msgHandler(topic, message) {
-    console.log(topic, message)
+    console.log(topic, message);
+    try {
+      const payload = JSON.parse(message);
+      console.log(payload)
+      if (payload) {
+        if (payload.to === "cube") {
+          if (payload.cmd === "cubeDirection") {
+            if (payload.prm) {
+              if (payload.prm.cube == this.name) {
+                this.stop();
+                this.isReverse = payload.prm.reverse ? true : false;
+                this.start();
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log("cannot parse payload");
+    }
   }
 
+  #publishMqtt(payload) {
+    if (this.mqttCtrl) {
+      this.mqttCtrl.publish(process.env.MQTT_TOPIC, JSON.stringify({
+        ...payload,
+        to: "turntable",
+        from: "cube"
+      }));
+    }
+  }
+
+  #publishCubeStartMsg() {
+    this.#publishMqtt({
+      cmd: "cubeStart",
+      prm: {
+        cube: this.name
+      }
+    });
+  }
+
+  #publishCubeStopMsg() {
+    this.#publishMqtt({
+      cmd: "cubeStop",
+      prm: {
+        cube: this.name
+      }
+    });
+  }
+
+  #publishEfxMsg() {
+    this.#publishMqtt({
+      cmd: "efx",
+    });
+  }
 }
 
 async function main() {
@@ -196,11 +249,11 @@ async function main() {
   const cubeB = await cubes[1].connect()
 
   const ToioCtrlA = new ToioCtrl(
-    cubeA, "A", toioACenter, toioBaseWheelSpeed, toidAColor, toioRadius);
+    cubeA, 0, toioACenter, toioBaseWheelSpeed, toidAColor, toioRadius);
   ToioCtrlA.lightOn();
 
   const ToioCtrlB = new ToioCtrl(
-    cubeB, "B", toioBCenter, toioBaseWheelSpeed, toidBColor, toioRadius);
+    cubeB, 1, toioBCenter, toioBaseWheelSpeed, toidBColor, toioRadius);
   ToioCtrlB.lightOn();
   
   ToioCtrlA.setMqttCtrl(mqtt);
