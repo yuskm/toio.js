@@ -35,7 +35,9 @@
     "esModuleInterop": true,
     
     // ymiyama [2024/02/22
-    // - MQTT.js に依存する package が type error を出したため、暫定対策。 
+    // - MQTT.js に依存する package が 以下のような type error を出したため、暫定対策。
+    // ../../node_modules/@types/ws/index.d.ts(321,18): error TS2315: Type 'Server' is not generic.
+    // ../../node_modules/@types/ws/index.d.ts(321,34): error TS2315: Type 'Server' is not generic. 
     "skipLibCheck": true,
     // ymiyama]
 

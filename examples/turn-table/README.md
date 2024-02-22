@@ -1,7 +1,7 @@
 ## note
 ### build
 - packages/cube もしくは packages/scanner を編集した場合は build が必要。
-- typescript 3.7.5 で yarn build すると、toio/cube の build 時に 以下のようなエラーが発生する。
+- typescript 3.7.5 で yarn build すると、packages/cube の build 時に 以下のようなエラーが発生する。
 ```
 ../../node_modules/@types/readable-stream/index.d.ts(4,13): error TS1005: '=' expected.
 ../../node_modules/@types/readable-stream/index.d.ts(4,18): error TS1005: ';' expected.
