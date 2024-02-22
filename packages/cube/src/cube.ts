@@ -302,6 +302,12 @@ export class Cube {
       : missingCharacteristicRejection()
   }
 
+  public getShakeStatus(): Promise<{ shakeLevel: number }> {
+    return this.sensorCharacteristic !== null
+      ? this.sensorCharacteristic.getShakeLevel()
+      : missingCharacteristicRejection()
+  }
+
   public getOrientation(): Promise<{ orientation: number }> {
     return this.sensorCharacteristic !== null
       ? this.sensorCharacteristic.getOrientation()

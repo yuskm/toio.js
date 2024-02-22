@@ -102,6 +102,14 @@ export class SensorCharacteristic {
     })
   }
 
+  public getShakeLevel(): Promise<{ shakeLevel: number }> {
+    return new Promise(resolve => {
+      this.prevMotionStatus.shakeLevel !== undefined
+        ? resolve({ shakeLevel: this.prevMotionStatus.shakeLevel })
+        : resolve({ shakeLevel: 0 })
+    })
+  }
+
   public getOrientation(): Promise<{ orientation: number }> {
     return new Promise(resolve => {
       this.prevMotionStatus.orientation !== undefined
